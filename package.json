@@ -32,7 +32,6 @@
   "homepage": "https://github.com/someimportantcompany/identity-controls#readme",
   "dependencies": {
     "lodash.isplainobject": "^4.0.6",
-    "lodash.template": "^4.5.0",
     "micromatch": "^4.0.2"
   },
   "devDependencies": {

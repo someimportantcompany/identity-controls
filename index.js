@@ -1,11 +1,12 @@
-const _isPlainObject = require('lodash.isplainobject');
-const _template = require('lodash.template');
+const isPlainObject = require('lodash.isplainobject');
 const micromatch = require('micromatch');
 
-const TEMPLATE_SETTINGS = {
-  interpolate: /{{([\s\S]+?)}}/g,
-};
-
+/**
+ * @param value
+ * @param {(Error|string)} err
+ * @throws {Error}
+ * @return {boolean}
+ */
 function assert(value, err) {
   if (Boolean(value) === false) {
     /* istanbul ignore if */
@@ -22,6 +23,13 @@ function assert(value, err) {
   return true;
 }
 
+/**
+ * @param {Array<Object>} permissions
+ * @param {string} identity
+ * @param {string} resource
+ * @param {Object} conditions
+ * @return {boolean}
+ */
 function can(permissions, action, resource, conditions) {
   assert(Array.isArray(permissions), new TypeError('Expected permissions to be an array'));
   assert(typeof action === 'string' && action.length, new TypeError('Expected action to be a string'));
@@ -31,7 +39,10 @@ function can(permissions, action, resource, conditions) {
     const actions = statement && Array.isArray(statement.actions) ? statement.actions : [];
 
     if (statement && statement.effect && (actions.includes(action) || micromatch.isMatch(action, actions))) {
-      const template = r => r.includes('{{') ? _template(r, TEMPLATE_SETTINGS)(conditions) : r;
+      const template = string => string.includes('{{')
+        ? string.replace(/{{([\s\S]+?)}}/g, (value, key) => conditions.hasOwnProperty(key) ? conditions[key] : value)
+        : string;
+
       const resources = (Array.isArray(statement.resources) ? statement.resources : []).map(template);
       if (resources.includes(resource) || micromatch.isMatch(resource, resources)) {
         result.push(statement.effect);
@@ -44,13 +55,20 @@ function can(permissions, action, resource, conditions) {
   return matches.length ? matches.includes('DENY') === false : false;
 }
 
+/**
+ * @param {string} identity
+ * @param {Array<Object<string,Function>>} permissions
+ * @param {Object} defaultConditions
+ * @return {Object}
+ */
 function createIdentityControls(identity, permissions, defaultConditions) {
   assert(typeof identity === 'string' && identity.length, new TypeError('Expected identity to be a string'));
   assert(Array.isArray(permissions), new TypeError('Expected permissions to be an array'));
-  assert(defaultConditions === undefined || _isPlainObject(defaultConditions),
+  assert(defaultConditions === undefined || isPlainObject(defaultConditions),
     new TypeError('Expected defaultConditions to be a plain object'));
+
   permissions.forEach(statement => {
-    assert(_isPlainObject(statement), new TypeError('Expected each statement to be a plain object'));
+    assert(isPlainObject(statement), new TypeError('Expected each statement to be a plain object'));
     const { effect, actions, resources } = statement;
     assert(typeof effect === 'string' && [ 'ALLOW', 'DENY' ].includes(effect),
       new TypeError('Expected each statement to have an effect string with ALLOW or DENY'));
@@ -61,15 +79,31 @@ function createIdentityControls(identity, permissions, defaultConditions) {
   });
 
   return {
+
+    /**
+     * @param {string} identity
+     * @param {string} resource
+     * @param {Object} conditions
+     * @return {boolean}
+     */
     can(action, resource, conditions) {
       assert(typeof action === 'string' && action.length, new TypeError('Expected action to be a string'));
       assert(typeof resource === 'string' && resource.length, new TypeError('Expected resource to be a string'));
-      assert(conditions === undefined || _isPlainObject(conditions), new TypeError('Expected conditions to be a plain object'));
+      assert(conditions === undefined || isPlainObject(conditions), new TypeError('Expected conditions to be a plain object'));
       return can(permissions, action, resource, { identity, ...defaultConditions, ...conditions });
     },
+
+    /**
+     * @param {string} identity
+     * @param {string} resource
+     * @param {Object} conditions
+     * @throws {PermissionDeniedError}
+     * @return {boolean}
+     */
     assert(action, resource, conditions) {
       return assert(can(permissions, action, resource, conditions), new PermissionDeniedError(identity, action, resource, conditions));
-    }
+    },
+
   };
 }
 
@@ -79,6 +113,12 @@ module.exports = {
 };
 
 class PermissionDeniedError extends Error {
+  /**
+   * @param {string} identity
+   * @param {string} action
+   * @param {string} resource
+   * @param {Object} conditions
+   */
   constructor(identity, action, resource, conditions) {
     super(`Permission denied to ${identity} for ${action} on ${resource}`);
     Object.defineProperties(this, {
