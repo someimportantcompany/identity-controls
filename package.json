@@ -17,12 +17,12 @@
     "index.js"
   ],
   "keywords": [
-    "dynamodb",
-    "dynamo",
-    "aws",
-    "amazon",
-    "redis",
-    "key-value"
+    "identity",
+    "controls",
+    "access",
+    "management",
+    "iam",
+    "permissions"
   ],
   "author": "James D <james@jdrydn.com> (https://jdrydn.com)",
   "license": "MIT",
