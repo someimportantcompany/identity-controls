@@ -1,7 +1,7 @@
 {
   "name": "identity-controls",
   "description": "Identity access controls for your application",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "scripts": {
     "lint": "eslint --ext .js .",
