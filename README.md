@@ -19,12 +19,12 @@ const what = [
   {
     effect: 'ALLOW',
     action: [ 'users:*' ],
-    resource: [ '${self:identity}' ],
+    resource: [ '${identity}' ],
   },
   {
     effect: 'DENY',
     action: [ 'users:delete' ],
-    resource: [ '${self:identity}' ],
+    resource: [ '${identity}' ],
   },
 ];
 

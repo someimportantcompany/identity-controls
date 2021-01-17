@@ -1,7 +1,7 @@
 {
   "name": "identity-controls",
   "description": "Identity access controls for your application",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "lint": "eslint --ext .js .",
@@ -32,6 +32,7 @@
   "homepage": "https://github.com/someimportantcompany/identity-controls#readme",
   "dependencies": {
     "lodash.isplainobject": "^4.0.6",
+    "lodash.template": "^4.5.0",
     "micromatch": "^4.0.2"
   },
   "devDependencies": {

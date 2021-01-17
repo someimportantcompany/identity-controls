@@ -17,7 +17,7 @@ describe('identity-controls', () => {
     assert.strictEqual(typeof permissions.assert, 'function', 'Expected assert to be a function');
   });
 
-  describe('Permissions #1', () => {
+  describe('methods', () => {
     let perms = null;
     const statements = [
       { effect: 'ALLOW', actions: [ 'users:read' ], resources: [ urn('users', '*') ] },
@@ -51,24 +51,45 @@ describe('identity-controls', () => {
     });
   });
 
-  describe('Permissions #2', () => {
+  describe('Scenario - Allow user read/write, posts ALL & deny posts delete', () => {
     let perms = null;
     const statements = [
       { effect: 'ALLOW', actions: [ 'users:read' ], resources: [ urn('users', '*') ] },
+      { effect: 'ALLOW', actions: [ 'users:write' ], resources: [ '{{identity}}' ] },
       { effect: 'ALLOW', actions: [ 'posts:*' ], resources: [ urn('posts', 1) ] },
       { effect: 'DENY', actions: [ 'posts:delete' ], resources: [ urn('posts', '*') ] },
     ];
 
     before(() => {
-      perms = createIdentityControls(urn('user', 101), statements);
+      perms = createIdentityControls(urn('users', 101), statements);
       assert(_.isPlainObject(perms), 'Expected createIdentityControls to return an object');
       assert.strictEqual(typeof perms.can, 'function', 'Expected can to be a function');
       assert.strictEqual(typeof perms.assert, 'function', 'Expected assert to be a function');
     });
 
     it('should allow users:read', () => assert(perms.can('users:read', urn('users', 110))));
+    it('should allow users:write', () => assert(perms.can('users:write', urn('users', 101))));
     it('should allow posts:read', () => assert(perms.can('posts:read', urn('posts', 1))));
     it('should deny posts:delete', () => assert(perms.can('posts:delete', urn('posts', 1)) === false));
+  });
+
+  describe('Scenario - Allow ALL', () => {
+    let perms = null;
+    const statements = [
+      { effect: 'ALLOW', actions: [ '*' ], resources: [ '*' ] },
+    ];
+
+    before(() => {
+      perms = createIdentityControls(urn('users', 101), statements);
+      assert(_.isPlainObject(perms), 'Expected createIdentityControls to return an object');
+      assert.strictEqual(typeof perms.can, 'function', 'Expected can to be a function');
+      assert.strictEqual(typeof perms.assert, 'function', 'Expected assert to be a function');
+    });
+
+    it('should allow users:read', () => assert(perms.can('users:read', urn('users', 110))));
+    it('should allow users:write', () => assert(perms.can('users:write', urn('users', 101))));
+    it('should allow posts:read', () => assert(perms.can('posts:read', urn('posts', 1))));
+    it('should allow posts:delete', () => assert(perms.can('posts:delete', urn('posts', 1))));
   });
 
 });

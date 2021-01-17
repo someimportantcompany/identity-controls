@@ -1,5 +1,10 @@
-const isPlainObject = require('lodash.isplainobject');
+const _isPlainObject = require('lodash.isplainobject');
+const _template = require('lodash.template');
 const micromatch = require('micromatch');
+
+const TEMPLATE_SETTINGS = {
+  interpolate: /{{([\s\S]+?)}}/g,
+};
 
 function assert(value, err) {
   if (Boolean(value) === false) {
@@ -17,26 +22,35 @@ function assert(value, err) {
   return true;
 }
 
-function can(permissions, action, resource) {
+function can(permissions, action, resource, conditions) {
   assert(Array.isArray(permissions), new TypeError('Expected permissions to be an array'));
   assert(typeof action === 'string' && action.length, new TypeError('Expected action to be a string'));
   assert(typeof resource === 'string' && resource.length, new TypeError('Expected resource to be a string'));
 
   const matches = permissions.reduce((result, statement) => {
-    const { effect, actions, resources } = statement || {};
-    const matchesAction = actions.includes(action) || micromatch.isMatch(action, actions);
-    const matchesResource = resources.includes(resource) || micromatch.isMatch(resource, resources);
-    return matchesAction && matchesResource ? result.concat(effect) : result;
+    const actions = statement && Array.isArray(statement.actions) ? statement.actions : [];
+
+    if (statement && statement.effect && (actions.includes(action) || micromatch.isMatch(action, actions))) {
+      const template = r => r.includes('{{') ? _template(r, TEMPLATE_SETTINGS)(conditions) : r;
+      const resources = (Array.isArray(statement.resources) ? statement.resources : []).map(template);
+      if (resources.includes(resource) || micromatch.isMatch(resource, resources)) {
+        result.push(statement.effect);
+      }
+    }
+
+    return result;
   }, []);
 
   return matches.length ? matches.includes('DENY') === false : false;
 }
 
-function createIdentityControls(identity, permissions) {
+function createIdentityControls(identity, permissions, defaultConditions) {
   assert(typeof identity === 'string' && identity.length, new TypeError('Expected identity to be a string'));
   assert(Array.isArray(permissions), new TypeError('Expected permissions to be an array'));
+  assert(defaultConditions === undefined || _isPlainObject(defaultConditions),
+    new TypeError('Expected defaultConditions to be a plain object'));
   permissions.forEach(statement => {
-    assert(isPlainObject(statement), new TypeError('Expected each statement to be a plain object'));
+    assert(_isPlainObject(statement), new TypeError('Expected each statement to be a plain object'));
     const { effect, actions, resources } = statement;
     assert(typeof effect === 'string' && [ 'ALLOW', 'DENY' ].includes(effect),
       new TypeError('Expected each statement to have an effect string with ALLOW or DENY'));
@@ -47,11 +61,14 @@ function createIdentityControls(identity, permissions) {
   });
 
   return {
-    can(...args) {
-      return can(permissions, ...args);
+    can(action, resource, conditions) {
+      assert(typeof action === 'string' && action.length, new TypeError('Expected action to be a string'));
+      assert(typeof resource === 'string' && resource.length, new TypeError('Expected resource to be a string'));
+      assert(conditions === undefined || _isPlainObject(conditions), new TypeError('Expected conditions to be a plain object'));
+      return can(permissions, action, resource, { identity, ...defaultConditions, ...conditions });
     },
-    assert(...args) {
-      return assert(can(permissions, ...args), new PermissionDeniedError(identity, ...args));
+    assert(action, resource, conditions) {
+      return assert(can(permissions, action, resource, conditions), new PermissionDeniedError(identity, action, resource, conditions));
     }
   };
 }
